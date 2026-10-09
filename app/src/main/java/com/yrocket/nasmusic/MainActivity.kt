@@ -8,6 +8,9 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
@@ -29,7 +32,8 @@ import com.yrocket.nasmusic.ui.theme.NasMusicTheme
 class MainActivity : ComponentActivity() {
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
-    private var controller: MediaController? = null
+    // Compose state, so the player UI appears once the asynchronous connection completes.
+    private var controller: MediaController? by mutableStateOf(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +42,7 @@ class MainActivity : ComponentActivity() {
             NasMusicTheme {
                 NasMusicApp(
                     viewModel = viewModel<LibraryViewModel>(),
+                    player = controller,
                     onPlay = ::play,
                 )
             }

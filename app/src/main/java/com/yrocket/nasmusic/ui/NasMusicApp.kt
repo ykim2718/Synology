@@ -38,17 +38,28 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Player
 import com.yrocket.nasmusic.data.subsonic.Song
 
 /**
  * Whole UI: server setup, then the artist to album to song drill-down.
  *
+ * @param player Null until the MediaController has connected; the player UI stays hidden until then.
  * @param onPlay Receives the queue built from one album and the index to start at.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NasMusicApp(viewModel: LibraryViewModel, onPlay: (List<MediaItem>, Int) -> Unit) {
+fun NasMusicApp(viewModel: LibraryViewModel, player: Player?, onPlay: (List<MediaItem>, Int) -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val playerState = rememberPlayerState(player)
+    var showNowPlaying by rememberSaveable { mutableStateOf(false) }
+
+    // Falls back to the library on its own once the queue is cleared.
+    if (showNowPlaying && player != null && playerState != null) {
+        BackHandler { showNowPlaying = false }
+        NowPlayingScreen(playerState, player, onCollapse = { showNowPlaying = false })
+        return
+    }
 
     BackHandler(enabled = state.screen is Screen.Albums || state.screen is Screen.Songs) {
         viewModel.back()
@@ -71,6 +82,11 @@ fun NasMusicApp(viewModel: LibraryViewModel, onPlay: (List<MediaItem>, Int) -> U
                     }
                 },
             )
+        },
+        bottomBar = {
+            if (player != null && playerState != null) {
+                MiniPlayer(playerState, player, onExpand = { showNowPlaying = true })
+            }
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
@@ -103,6 +119,7 @@ fun NasMusicApp(viewModel: LibraryViewModel, onPlay: (List<MediaItem>, Int) -> U
                                 val repository = viewModel.repository ?: return@clickable
                                 val queue = state.songs.map { mediaItemOf(it, repository.streamUrl(it.id)) }
                                 onPlay(queue, state.songs.indexOf(song))
+                                showNowPlaying = true
                             },
                         )
                     }
